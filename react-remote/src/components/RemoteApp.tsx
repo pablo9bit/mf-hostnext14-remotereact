@@ -97,7 +97,7 @@ const NotFoundView: React.FC<{ path: string; navigate: (path: string) => void }>
 
 const RemoteApp: React.FC<RemoteAppProps> = ({ initialPath = '/', hostPath = '/', onNavigate }) => {
   const [currentPath, setCurrentPath] = useState(() => normalizePath(initialPath));
-  const lastRequestedNavigationRef = useRef<string | null>(null);
+  const hostPathRef = useRef(normalizePath(hostPath));
   const onNavigateRef = useRef<RemoteAppProps['onNavigate']>(onNavigate);
 
   useEffect(() => {
@@ -106,31 +106,19 @@ const RemoteApp: React.FC<RemoteAppProps> = ({ initialPath = '/', hostPath = '/'
 
   useEffect(() => {
     const normalizedHostPath = normalizePath(hostPath);
+    hostPathRef.current = normalizedHostPath;
     setCurrentPath((previousPath) =>
       previousPath === normalizedHostPath ? previousPath : normalizedHostPath
     );
   }, [hostPath]);
 
-  useEffect(() => {
-    if (!onNavigateRef.current) return;
-
-    const normalizedHostPath = normalizePath(hostPath);
-    if (currentPath === normalizedHostPath) {
-      lastRequestedNavigationRef.current = null;
-      return;
-    }
-
-    if (lastRequestedNavigationRef.current === currentPath) {
-      return;
-    }
-
-    lastRequestedNavigationRef.current = currentPath;
-
-    onNavigateRef.current(currentPath);
-  }, [currentPath, hostPath]);
-
   const navigate = (path: string): void => {
-    setCurrentPath(normalizePath(path));
+    const normalizedPath = normalizePath(path);
+    setCurrentPath(normalizedPath);
+
+    if (onNavigateRef.current && normalizedPath !== hostPathRef.current) {
+      onNavigateRef.current(normalizedPath);
+    }
   };
 
   const view = useMemo(() => {
