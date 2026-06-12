@@ -1,0 +1,28 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "dev-remote",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"--prefix",
+				"react-remote",
+				"start"
+			],
+			"isBackground": true
+		},
+		{
+			"label": "dev-host",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"--prefix",
+				"nextjs-host",
+				"run",
+				"dev"
+			],
+			"isBackground": true
+		}
+	]
+}

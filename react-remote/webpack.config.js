@@ -8,6 +8,7 @@ module.exports = {
   devServer: {
     port: 3021,
     hot: true,
+    historyApiFallback: true,
     headers: {
       'Access-Control-Allow-Origin': '*',
     },
@@ -34,9 +35,20 @@ module.exports = {
       filename: 'remoteEntry.js',
       exposes: {
         './Button': './src/components/Button',
+        './RemoteApp': './src/components/RemoteApp',
       },
-      // No compartir - cada app usa su propia versión de React
-      shared: {},
+      shared: {
+        react: {
+          singleton: true,
+          requiredVersion: '^18.2.0',
+          eager: false,
+        },
+        'react-dom': {
+          singleton: true,
+          requiredVersion: '^18.2.0',
+          eager: false,
+        },
+      },
       library: { type: 'var', name: 'remote' },
     }),
     new HtmlWebpackPlugin({

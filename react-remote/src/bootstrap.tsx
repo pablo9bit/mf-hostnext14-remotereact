@@ -1,34 +1,72 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import Button from './components/Button';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import RemoteApp from './components/RemoteApp';
+
+const normalizePath = (path?: string): string => {
+  if (!path) return '/';
+  const withLeadingSlash = path.startsWith('/') ? path : `/${path}`;
+  const normalized = withLeadingSlash.replace(/\/+/g, '/');
+
+  if (normalized.length > 1 && normalized.endsWith('/')) {
+    return normalized.slice(0, -1);
+  }
+
+  return normalized || '/';
+};
 
 const App: React.FC = () => {
-  const handleClick = () => {
-    alert('Button clicked from Remote App!');
-  };
+  const [browserPath, setBrowserPath] = useState(() => normalizePath(window.location.pathname));
+  const browserPathRef = useRef(browserPath);
+
+  useEffect(() => {
+    browserPathRef.current = browserPath;
+  }, [browserPath]);
+
+  useEffect(() => {
+    const onPopState = () => {
+      const nextPath = normalizePath(window.location.pathname);
+      setBrowserPath((previousPath) => (previousPath === nextPath ? previousPath : nextPath));
+    };
+
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  const handleNavigate = useCallback((path: string) => {
+    const targetPath = normalizePath(path);
+    if (targetPath === browserPathRef.current) {
+      return;
+    }
+
+    window.history.pushState({}, '', targetPath);
+    browserPathRef.current = targetPath;
+    setBrowserPath(targetPath);
+  }, []);
 
   return (
-    <div style={{ 
-      padding: '40px', 
-      fontFamily: 'system-ui, -apple-system, sans-serif',
-      textAlign: 'center' 
-    }}>
-      <h1 style={{ color: '#0070f3' }}>React Remote App</h1>
-      <p style={{ color: '#666', marginBottom: '20px' }}>
-        This is a standalone React app that exposes components via Module Federation
-      </p>
-      <Button 
-        label="Click Me (Remote)" 
-        onClick={handleClick}
-        variant="primary"
-      />
+    <div style={{ background: '#e2e8f0', minHeight: '100vh', padding: 24 }}>
+      <div style={{ maxWidth: 980, margin: '0 auto' }}>
+        <p style={{ color: '#0f172a', marginTop: 0 }}>
+          Standalone remoto en <strong>http://localhost:3021{browserPath}</strong>
+        </p>
+        <RemoteApp
+          initialPath={browserPath}
+          hostPath={browserPath}
+          onNavigate={handleNavigate}
+        />
+      </div>
     </div>
   );
 };
 
-const root = ReactDOM.createRoot(
-  document.getElementById('root') as HTMLElement
-);
+const rootElement = document.getElementById('root');
+
+if (!rootElement) {
+  throw new Error('Root element with id "root" was not found');
+}
+
+const root = ReactDOM.createRoot(rootElement);
 
 root.render(
   <React.StrictMode>

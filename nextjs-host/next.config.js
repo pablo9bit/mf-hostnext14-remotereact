@@ -16,13 +16,13 @@ const nextConfig = {
           // No compartir - cada app usa sus propias dependencias
           shared: {
             react: {
-              singleton: false,
+              singleton: true,
               requiredVersion: "^18.2.0",
               eager: true,
               import: "react",
             },
             "react-dom": {
-              singleton: false,
+              singleton: true,
               requiredVersion: "^18.2.0",
               eager: true,
               import: "react-dom",

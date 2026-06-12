@@ -6,3 +6,10 @@ declare module 'remote/Button' {
   export default Button;
   export type { ButtonProps };
 }
+
+declare module 'remote/RemoteApp' {
+  import { RemoteAppProps } from '../components/RemoteApp';
+  const RemoteApp: React.FC<RemoteAppProps>;
+  export default RemoteApp;
+  export type { RemoteAppProps };
+}
