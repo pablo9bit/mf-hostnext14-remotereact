@@ -8,15 +8,15 @@
     "react-remote"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev:remote\" \"npm run dev:host\"",
-    "dev:remote": "cd react-remote && npm start",
-    "dev:host": "cd nextjs-host && npm run dev",
-    "build": "npm run build:remote && npm run build:host",
-    "build:remote": "cd react-remote && npm run build",
-    "build:host": "cd nextjs-host && npm run build",
-    "type-check": "npm run type-check:remote && npm run type-check:host",
-    "type-check:remote": "cd react-remote && npm run type-check",
-    "type-check:host": "cd nextjs-host && npm run type-check"
+    "dev": "concurrently \"npm --prefix react-remote start\" \"npm --prefix nextjs-host run dev\"",
+    "dev:remote": "npm --prefix react-remote start",
+    "dev:host": "npm --prefix nextjs-host run dev",
+    "build": "npm --prefix react-remote run build && npm --prefix nextjs-host run build",
+    "build:remote": "npm --prefix react-remote run build",
+    "build:host": "npm --prefix nextjs-host run build",
+    "type-check": "npm --prefix react-remote run type-check && npm --prefix nextjs-host run type-check",
+    "type-check:remote": "npm --prefix react-remote run type-check",
+    "type-check:host": "npm --prefix nextjs-host run type-check"
   },
   "devDependencies": {
     "concurrently": "^8.2.0"
