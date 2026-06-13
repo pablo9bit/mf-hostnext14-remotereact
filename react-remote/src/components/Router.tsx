@@ -33,25 +33,13 @@ const normalizePath = (path?: string): string => {
   return normalized || '/';
 };
 
-// Hook that works with or without Router context
-const useSearchParamsSafe = (): URLSearchParams => {
-  try {
-    // Try to use React Router's useSearchParams (works inside <Router>)
-    const [searchParams] = useSearchParams();
-    return searchParams;
-  } catch {
-    // Fallback to window.location.search if not in Router context
-    return new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
-  }
-};
-
 // View Components with query params support
 interface RouteViewProps {
   navigate: (path: string) => void;
 }
 
 const HomeView: React.FC<RouteViewProps> = ({ navigate }) => {
-  const searchParams = useSearchParamsSafe();
+  const [searchParams] = useSearchParams();
   const queryParam = searchParams.get('q');
 
   return (
@@ -94,7 +82,7 @@ const HomeView: React.FC<RouteViewProps> = ({ navigate }) => {
 };
 
 const DetailView: React.FC<RouteViewProps> = ({ navigate }) => {
-  const searchParams = useSearchParamsSafe();
+  const [searchParams] = useSearchParams();
   const queryParam = searchParams.get('q');
 
   return (
@@ -190,8 +178,8 @@ const NotFoundView: React.FC<{ path: string; navigate: (path: string) => void }>
   </div>
 );
 
-// Inner component that uses React Router hooks (STANDALONE ONLY)
-const RouterInner: React.FC<RemoteRouterProps> = ({
+// Router content component that handles the two modes
+const RouterContent: React.FC<RemoteRouterProps> = ({
   initialPath = '/',
   hostPath = '/',
   onNavigate,
@@ -200,22 +188,39 @@ const RouterInner: React.FC<RemoteRouterProps> = ({
   const location = useLocation();
   const onNavigateRef = useRef(onNavigate);
 
+  // Detect if in embedded mode
+  const isEmbedded = useMemo(() => {
+    return !!(initialPath || hostPath || onNavigate);
+  }, [initialPath, hostPath, onNavigate]);
+
   // Update ref when onNavigate changes
   useEffect(() => {
     onNavigateRef.current = onNavigate;
   }, [onNavigate]);
+
+  // Sync hostPath changes to current route
+  useEffect(() => {
+    if (!isEmbedded) return;
+
+    const normalizedHostPath = normalizePath(hostPath);
+    const normalizedCurrentPath = normalizePath(location.pathname);
+
+    if (normalizedHostPath !== normalizedCurrentPath) {
+      navigate(normalizedHostPath);
+    }
+  }, [hostPath, navigate, isEmbedded, location]);
 
   // Handle internal navigation and call onNavigate callback
   const handleNavigate = (path: string) => {
     const normalizedPath = normalizePath(path);
     navigate(normalizedPath);
 
-    if (onNavigateRef.current) {
+    if (isEmbedded && onNavigateRef.current) {
       onNavigateRef.current(normalizedPath);
     }
   };
 
-  // Determine which view to render based on current location
+  // Determine which view to render
   const currentPath = normalizePath(location.pathname);
 
   return (
@@ -230,7 +235,10 @@ const RouterInner: React.FC<RemoteRouterProps> = ({
       <h1 style={{ marginTop: 0, color: '#0f172a' }}>React Router 6 Remote</h1>
       <p style={{ color: '#334155', marginBottom: 20 }}>
         Ruta activa: <strong>{currentPath}</strong>
-        <span style={{ color: '#16a34a', marginLeft: '16px' }}>(Modo standalone)</span>
+        {isEmbedded && (
+          <span style={{ color: '#7c3aed', marginLeft: '16px' }}>(Modo embebido)</span>
+        )}
+        {!isEmbedded && <span style={{ color: '#16a34a', marginLeft: '16px' }}>(Modo standalone)</span>}
       </p>
 
       {currentPath === '/' && <HomeView navigate={handleNavigate} />}
@@ -242,79 +250,22 @@ const RouterInner: React.FC<RemoteRouterProps> = ({
   );
 };
 
-// Controlled component for embedded mode (NO BrowserRouter, controlled by props)
-const EmbeddedContent: React.FC<RemoteRouterProps> = ({
-  initialPath = '/',
-  hostPath = '/',
-  onNavigate,
-}) => {
-  const onNavigateRef = useRef(onNavigate);
-
-  // Update ref when onNavigate changes
-  useEffect(() => {
-    onNavigateRef.current = onNavigate;
-  }, [onNavigate]);
-
-  // Handle internal navigation and call onNavigate callback
-  const handleNavigate = (path: string) => {
-    const normalizedPath = normalizePath(path);
-
-    // Always call onNavigate callback to sync with host
-    if (onNavigateRef.current) {
-      onNavigateRef.current(normalizedPath);
-    }
-  };
-
-  // Determine which view to render based on hostPath prop
-  const currentPath = normalizePath(hostPath);
-
-  return (
-    <div
-      style={{
-        fontFamily: 'Segoe UI, system-ui, -apple-system, sans-serif',
-        background: 'linear-gradient(145deg, #f8fafc 0%, #e2e8f0 100%)',
-        minHeight: 420,
-        padding: 24,
-      }}
-    >
-      <h1 style={{ marginTop: 0, color: '#0f172a' }}>React Router 6 Remote</h1>
-      <p style={{ color: '#334155', marginBottom: 20 }}>
-        Ruta activa: <strong>{currentPath}</strong>
-        <span style={{ color: '#7c3aed', marginLeft: '16px' }}>(Modo embebido)</span>
-      </p>
-
-      {currentPath === '/' && <HomeView navigate={handleNavigate} />}
-      {currentPath === '/detalle' && <DetailView navigate={handleNavigate} />}
-      {currentPath !== '/' && currentPath !== '/detalle' && (
-        <NotFoundView path={currentPath} navigate={handleNavigate} />
-      )}
-    </div>
-  );
-};
-
-// Router wrapper for embedded mode (NO BrowserRouter - controlled by props)
-const EmbeddedRouter: React.FC<RemoteRouterProps> = (props) => {
-  return <EmbeddedContent {...props} />;
-};
-
-// Router wrapper for standalone mode (BrowserRouter + React Router 6)
-const StandaloneRouter: React.FC<RemoteRouterProps> = (props) => {
-  return (
-    <BrowserRouter>
-      <RouterInner {...props} />
-    </BrowserRouter>
-  );
-};
-
-// Main RemoteRouter component that detects mode and renders accordingly
+// Main RemoteRouter component
 const RemoteRouter: React.FC<RemoteRouterProps> = (props) => {
   const isEmbedded = !!(props.initialPath || props.hostPath || props.onNavigate);
 
+  // In embedded mode, don't render BrowserRouter (it's already provided by the host)
+  // Instead, just render the content
   if (isEmbedded) {
-    return <EmbeddedRouter {...props} />;
+    return <RouterContent {...props} />;
   }
 
-  return <StandaloneRouter {...props} />;
+  // In standalone mode, provide the BrowserRouter
+  return (
+    <BrowserRouter>
+      <RouterContent {...props} />
+    </BrowserRouter>
+  );
 };
 
 export default RemoteRouter;
